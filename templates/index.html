@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#08151b">
+    <title>InfraMap — Infrastructure Project Map</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Tam ekran harita (arka plan) -->
+    <div id="harita"></div>
+    <div class="map-shade"></div>
+
+    <!-- Üst menü: cam efektli, yarı saydam -->
+    <header class="topbar glass">
+        <a class="brand" href="#">
+            <span class="brand__mark">◆</span>
+            <span class="brand-copy"><strong>InfraMap</strong><small>Infrastructure project management</small></span>
+        </a>
+
+        <nav data-i18n-aria="navigation" aria-label="Main navigation">
+            <a href="#" data-tab="home" class="active" data-i18n="home">Home</a>
+            <a href="#" data-tab="projects" data-i18n="projects">Projects</a>
+            <a href="#" data-tab="analysis" data-i18n="analysis">Analysis</a>
+            <a href="#" data-tab="reports" data-i18n="reports">Reports</a>
+        </nav>
+
+        <div class="top-actions">
+            <button id="btn-fit" class="icon-btn" data-i18n-title="fit" title="Show all projects">⌖</button>
+            <button id="lang-toggle" class="lang-btn">TR</button>
+            <button id="btn-yeni-proje" class="btn primary">
+                <span>＋</span>
+                <span data-i18n="newProject">New Project</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="overlay-ui">
+        <!-- Sol sütun: sekmeye göre değişen içerik -->
+        <section class="left-stack">
+
+            <!-- SEKME 1: Ana Sayfa -->
+            <div id="tab-home" class="tab-panel">
+                <article class="welcome glass">
+                    <div class="eyebrow" data-i18n="overview">PROJECT OVERVIEW</div>
+                    <h1 data-i18n="welcome">Welcome 👋</h1>
+                    <p data-i18n="welcomeText">Manage, analyze and track your infrastructure projects directly on the map.</p>
+                    <div class="stats">
+                        <div><i class="stat-icon" aria-hidden="true">◈</i><b id="stat-toplam">—</b><span data-i18n="total">Total Projects</span></div>
+                        <div><i class="stat-icon" aria-hidden="true">↗</i><b id="stat-devam">—</b><span data-i18n="ongoing">Ongoing</span></div>
+                        <div><i class="stat-icon" aria-hidden="true">◷</i><b id="stat-planlama">—</b><span data-i18n="planned">Planned</span></div>
+                        <div><i class="stat-icon" aria-hidden="true">✓</i><b id="stat-tamamlandi">—</b><span data-i18n="completed">Completed</span></div>
+                    </div>
+                </article>
+
+                <article class="projects-panel glass">
+                    <div class="panel-head">
+                        <div>
+                            <div class="eyebrow" data-i18n="portfolio">PORTFOLIO</div>
+                            <h2 data-i18n="projects">Projects</h2>
+                        </div>
+                        <span id="proje-sayisi" class="count">0</span>
+                    </div>
+
+                    <div class="search">
+                        <span>⌕</span>
+                        <input id="filtre-ara" data-i18n-placeholder="search" placeholder="Search project or district...">
+                    </div>
+
+                    <div class="filters">
+                        <select id="filtre-tip" data-i18n-aria="projectType" aria-label="Project type">
+                            <option value="" data-i18n="allTypes">All types</option>
+                            {% for tip in tipler %}
+                                <option value="{{ tip }}">{{ tip_etiketleri[tip] }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="filtre-durum" data-i18n-aria="status" aria-label="Status">
+                            <option value="" data-i18n="allStatuses">All statuses</option>
+                            {% for durum in durumlar %}
+                                <option value="{{ durum }}">{{ durum_etiketleri[durum] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="proje-listesi" class="project-list"></div><button id="all-projects" class="text-link" data-i18n="allProjects">All Projects</button>
+                </article>
+            </div>
+
+            <!-- SEKME 2: Projeler (tam liste, tablo görünümü) -->
+            <div id="tab-projects" class="tab-panel hidden">
+                <article class="projects-panel projects-panel--full glass">
+                    <div class="panel-head">
+                        <div>
+                            <div class="eyebrow" data-i18n="portfolio">PORTFOLIO</div>
+                            <h2 data-i18n="allProjects">All Projects</h2>
+                        </div>
+                        <span id="proje-sayisi-2" class="count">0</span>
+                    </div>
+
+                    <div class="search">
+                        <span>⌕</span>
+                        <input id="filtre-ara-2" data-i18n-placeholder="search" placeholder="Search project or district...">
+                    </div>
+
+                    <div class="filters">
+                        <select id="filtre-tip-2" data-i18n-aria="projectType" aria-label="Project type">
+                            <option value="" data-i18n="allTypes">All types</option>
+                            {% for tip in tipler %}
+                                <option value="{{ tip }}">{{ tip_etiketleri[tip] }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="filtre-durum-2" data-i18n-aria="status" aria-label="Status">
+                            <option value="" data-i18n="allStatuses">All statuses</option>
+                            {% for durum in durumlar %}
+                                <option value="{{ durum }}">{{ durum_etiketleri[durum] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="table-head">
+                        <span data-i18n="colName">Project</span>
+                        <span data-i18n="colType">Type</span>
+                        <span data-i18n="colStatus">Status</span>
+                        <span data-i18n="colDistrict">District</span>
+                    </div>
+                    <div id="proje-tablosu" class="project-table"></div>
+                </article>
+            </div>
+
+            <!-- SEKME 3: Analiz (grafikler) -->
+            <div id="tab-analysis" class="tab-panel hidden">
+                <article class="analysis-panel glass">
+                    <div class="panel-head">
+                        <div>
+                            <div class="eyebrow" data-i18n="overview">PROJECT OVERVIEW</div>
+                            <h2 data-i18n="analysis">Analysis</h2>
+                        </div>
+                    </div>
+
+                    <div class="chart-block">
+                        <span class="chart-block__label" data-i18n="byType">BY TYPE</span>
+                        <canvas id="grafik-tip" height="150"></canvas>
+                    </div>
+                    <div class="chart-block">
+                        <span class="chart-block__label" data-i18n="byStatus">BY STATUS</span>
+                        <canvas id="grafik-durum" height="130"></canvas>
+                    </div>
+                </article>
+            </div>
+
+            <!-- SEKME 4: Raporlar (özet tablo + dışa aktarma) -->
+            <div id="tab-reports" class="tab-panel hidden">
+                <article class="reports-panel glass">
+                    <div class="panel-head">
+                        <div>
+                            <div class="eyebrow" data-i18n="overview">PROJECT OVERVIEW</div>
+                            <h2 data-i18n="reports">Reports</h2>
+                        </div>
+                    </div>
+
+                    <p class="reports-intro" data-i18n="reportsIntro">Summary of all projects by type and status.</p>
+
+                    <div id="rapor-ozet" class="report-summary"></div>
+
+                    <div class="report-actions">
+                        <button id="btn-csv" class="btn ghost" data-i18n="downloadCsv">Download CSV</button>
+                        <button id="btn-print" class="btn ghost" data-i18n="print">Print</button>
+                    </div>
+                </article>
+            </div>
+        <aside class="field-card glass"><span class="field-icon">⌖</span><div><strong data-i18n="mapArea">Map view</strong><span id="map-coordinates"></span></div><span class="field-badge" data-i18n="portfolio">PORTFOLIO</span></aside>
+        </section>
+
+        <!-- Sağ üst: harita lejantı -->
+        <aside class="legend-panel glass" id="legend-panel">
+            <div class="panel-head">
+                <h3 data-i18n="projectTypes">Project Types</h3>
+                <button id="legend-toggle" class="legend-toggle" data-i18n-aria="toggleLegend" aria-label="Toggle project legend" aria-expanded="true">⌃</button>
+            </div>
+            <ul id="legend-list"></ul>
+        </aside>
+
+        <div class="map-note glass" id="map-note">
+            <span class="pulse"></span>
+            <span data-i18n="mapHint">Click “New Project”, then choose a location on the map.</span>
+        </div>
+        <div class="basemaps glass" data-i18n-aria="basemap" aria-label="Map basemap"><button class="active" data-layer="satellite" aria-pressed="true"><span class="map-thumb satellite"></span><span data-i18n="satellite">Satellite</span></button><button data-layer="street" aria-pressed="false"><span class="map-thumb street"></span><span data-i18n="street">Map</span></button><button data-layer="terrain" aria-pressed="false"><span class="map-thumb terrain"></span><span data-i18n="terrain">Terrain</span></button></div>
+    </main>
+
+    <!-- Proje ekle / düzenle modali -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="modal-baslik">
+            <div class="modal-head">
+                <div>
+                    <div class="eyebrow" data-i18n="projectRecord">PROJECT RECORD</div>
+                    <h2 id="modal-baslik">New Project</h2>
+                </div>
+                <button data-i18n-aria="close" aria-label="Close" id="btn-modal-kapat" class="close">×</button>
+            </div>
+            <form id="proje-formu">
+                <input type="hidden" id="form-id">
+
+                <label><span data-i18n="projectName">Project name</span><input id="form-ad" required></label>
+
+                <div class="form-grid">
+                    <label>
+                        <span data-i18n="projectType">Project type</span>
+                        <select id="form-tip" required>
+                            {% for tip in tipler %}
+                                <option value="{{ tip }}">{{ tip_etiketleri[tip] }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        <span data-i18n="status">Status</span>
+                        <select id="form-durum" required>
+                            {% for durum in durumlar %}
+                                <option value="{{ durum }}">{{ durum_etiketleri[durum] }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+
+                <label><span data-i18n="district">District / Region</span><input id="form-ilce"></label>
+                <label><span data-i18n="description">Description</span><textarea id="form-aciklama" rows="3"></textarea></label>
+
+                <div class="form-grid">
+                    <label><span data-i18n="latitude">Latitude</span><input id="form-enlem" type="number" step="any" required></label>
+                    <label><span data-i18n="longitude">Longitude</span><input id="form-boylam" type="number" step="any" required></label>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-sil" class="btn danger hidden" data-i18n="delete">Delete Project</button>
+                    <span></span>
+                    <button type="button" id="btn-iptal" class="btn ghost" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn primary" data-i18n="save">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div role="status" aria-live="polite" id="toast" class="toast hidden"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

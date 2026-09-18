@@ -1,0 +1,979 @@
+/* =========================================================================
+   InfraMap — Altyapı Proje Haritası
+   Cam efektli (glassmorphism), koyu temalı, tam ekran uydu haritası
+   üzerine yerleştirilmiş yarı saydam panellerden oluşan arayüz.
+   ========================================================================= */
+
+:root {
+    --glass: rgba(10, 24, 31, 0.5);
+    --glass-2: rgba(16, 31, 39, 0.45);
+    --line: rgba(255, 255, 255, 0.17);
+    --text: #f7fafc;
+    --muted: #aab9c2;
+
+    --blue: #2492ff;
+    --green: #25bd79;
+    --amber: #ffb53d;
+    --red: #ef5350;
+
+    --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    --radius: 15px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Inter", system-ui, sans-serif;
+    background: #0b1820;
+    color: var(--text);
+}
+
+button, input, select, textarea {
+    font: inherit;
+}
+
+/* -------------------------------------------------------------------
+   Harita: tam ekran arka plan
+   ------------------------------------------------------------------- */
+#harita {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+}
+
+/* Haritanın üstüne hafif bir koyulaştırma — panellerin okunurluğu için */
+.map-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(2, 13, 18, 0.18), transparent 48%),
+        linear-gradient(180deg, rgba(2, 12, 18, 0.24), transparent 24%, rgba(2, 12, 18, 0.08));
+}
+
+/* -------------------------------------------------------------------
+   Cam efekti — tüm panellerin temel görünümü (yarı saydam + blur)
+   ------------------------------------------------------------------- */
+.glass {
+    background: var(--glass);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+/* -------------------------------------------------------------------
+   Üst menü
+   ------------------------------------------------------------------- */
+.topbar {
+    position: fixed;
+    z-index: 1000;
+    left: 18px;
+    right: 18px;
+    top: 16px;
+    height: 62px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    gap: 28px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.brand__mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #168cff, #3f6cff);
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+}
+
+.brand strong {
+    font-size: 15px;
+}
+
+nav {
+    display: flex;
+    gap: 26px;
+    margin-left: 18px;
+}
+
+nav a {
+    font-size: 13px;
+    color: #cbd5dc;
+    text-decoration: none;
+    cursor: pointer;
+    padding-bottom: 21px; /* alttaki aktif çizgi için boşluk */
+}
+
+nav a:hover {
+    color: #eef4f7;
+}
+
+nav a.active {
+    color: #fff;
+    position: relative;
+}
+
+nav a.active::after {
+    content: "";
+    position: absolute;
+    height: 2px;
+    background: #2f9cff;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.top-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+/* -------------------------------------------------------------------
+   Butonlar
+   ------------------------------------------------------------------- */
+.btn, .icon-btn, .lang-btn, .close {
+    border: 0;
+    cursor: pointer;
+}
+
+.btn {
+    height: 38px;
+    border-radius: 9px;
+    padding: 0 13px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.primary {
+    background: #198cff;
+    color: #fff;
+}
+
+.ghost {
+    background: rgba(255, 255, 255, 0.09);
+    color: #e9f0f4;
+    border: 1px solid var(--line);
+}
+
+.danger {
+    background: rgba(239, 83, 80, 0.15);
+    color: #ff9c99;
+    border: 1px solid rgba(239, 83, 80, 0.25);
+}
+
+.icon-btn, .lang-btn {
+    height: 36px;
+    min-width: 38px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #e9f0f4;
+    border: 1px solid var(--line);
+}
+
+.lang-btn {
+    font-weight: 800;
+    font-size: 11px;
+}
+
+/* -------------------------------------------------------------------
+   Panellerin oturduğu üst katman
+   ------------------------------------------------------------------- */
+.overlay-ui {
+    position: fixed;
+    z-index: 800;
+    inset: 94px 22px 22px;
+    pointer-events: none;
+}
+
+.left-stack {
+    width: 420px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: width 0.15s ease;
+}
+
+/* Projeler / Analiz / Raporlar sekmeleri biraz daha geniş, tablo ve
+   grafiklerin rahat nefes alması için */
+body[data-tab="projects"] .left-stack,
+body[data-tab="analysis"] .left-stack,
+body[data-tab="reports"] .left-stack {
+    width: 460px;
+}
+
+.tab-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+}
+
+.welcome, .projects-panel, .legend-panel, .map-note, .analysis-panel, .reports-panel {
+    pointer-events: auto;
+    border-radius: var(--radius);
+}
+
+/* -------------------------------------------------------------------
+   Hoş geldin / özet kartı
+   ------------------------------------------------------------------- */
+.welcome {
+    padding: 20px;
+}
+
+.eyebrow {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: #8da4b2;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.welcome h1, .projects-panel h2, .legend-panel h3, .analysis-panel h2, .reports-panel h2 {
+    margin: 0;
+}
+
+.welcome h1 {
+    font-size: 22px;
+}
+
+.welcome > p {
+    color: #c1cbd1;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 7px 0 17px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.stats div {
+    padding: 12px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.stats b {
+    display: block;
+    font-size: 20px;
+}
+
+.stats span {
+    display: block;
+    color: #aebbc3;
+    font-size: 9px;
+    margin-top: 4px;
+    white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------
+   Proje listesi paneli (Ana Sayfa sekmesi)
+   ------------------------------------------------------------------- */
+.projects-panel {
+    padding: 17px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.projects-panel--full {
+    flex: 1;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.panel-head h2 {
+    font-size: 18px;
+}
+
+.panel-head h3 {
+    font-size: 13px;
+}
+
+.count {
+    font-size: 11px;
+    background: rgba(36, 146, 255, 0.16);
+    color: #75baff;
+    padding: 5px 8px;
+    border-radius: 20px;
+}
+
+.search {
+    height: 39px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    margin: 13px 0 9px;
+    display: flex;
+    align-items: center;
+    padding: 0 11px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.search input {
+    width: 100%;
+    background: none;
+    border: 0;
+    outline: 0;
+    color: #fff;
+    font-size: 11px;
+}
+
+.search input::placeholder {
+    color: #83949e;
+}
+
+.filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.filters select, .modal select, .modal input, .modal textarea {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
+    color: #e9f0f4;
+    border-radius: 8px;
+    padding: 9px;
+    outline: none;
+    font-size: 11px;
+}
+
+.filters option, .modal option {
+    color: #111;
+}
+
+.project-list {
+    overflow: auto;
+    min-height: 0;
+    padding-right: 3px;
+}
+
+.project-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.project-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 9px;
+}
+
+.project-item {
+    padding: 11px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+.project-top {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.pin-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.project-name {
+    font-size: 11px;
+    font-weight: 700;
+    flex: 1;
+}
+
+.status {
+    font-size: 8px;
+    padding: 4px 7px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.09);
+    color: #dce5ea;
+    white-space: nowrap;
+}
+
+.project-meta {
+    font-size: 9px;
+    color: #8fa0aa;
+    margin: 4px 0 0 18px;
+}
+
+/* -------------------------------------------------------------------
+   Projeler sekmesi: tablo görünümü
+   ------------------------------------------------------------------- */
+.table-head {
+    display: grid;
+    grid-template-columns: 2fr 1.3fr 1.1fr 1.1fr;
+    gap: 8px;
+    padding: 8px 6px;
+    font-size: 9px;
+    letter-spacing: 0.4px;
+    color: #8da4b2;
+    font-weight: 800;
+    border-bottom: 1px solid var(--line);
+}
+
+.project-table {
+    overflow: auto;
+    min-height: 0;
+    flex: 1;
+}
+
+.project-table::-webkit-scrollbar {
+    width: 4px;
+}
+
+.project-table::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 9px;
+}
+
+.table-row {
+    display: grid;
+    grid-template-columns: 2fr 1.3fr 1.1fr 1.1fr;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.table-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.table-row .project-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-row .type-text {
+    color: #c3cdd2;
+}
+
+.table-row .district-text {
+    color: #8fa0aa;
+}
+
+/* -------------------------------------------------------------------
+   Analiz sekmesi
+   ------------------------------------------------------------------- */
+.analysis-panel {
+    padding: 17px;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.chart-block {
+    margin-bottom: 22px;
+}
+
+.chart-block:last-child {
+    margin-bottom: 0;
+}
+
+.chart-block__label {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: #8da4b2;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+/* -------------------------------------------------------------------
+   Raporlar sekmesi
+   ------------------------------------------------------------------- */
+.reports-panel {
+    padding: 17px;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.reports-intro {
+    font-size: 11.5px;
+    color: #c1cbd1;
+    line-height: 1.6;
+    margin: 8px 0 16px;
+}
+
+.report-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.report-group__title {
+    font-size: 10px;
+    letter-spacing: 0.6px;
+    color: #8da4b2;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.report-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 12px;
+}
+
+.report-row__label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-row__count {
+    font-weight: 700;
+    color: #75baff;
+}
+
+.report-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+/* -------------------------------------------------------------------
+   Harita lejantı (sağ üst)
+   ------------------------------------------------------------------- */
+.legend-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 190px;
+    padding: 16px;
+}
+
+.legend-panel ul {
+    list-style: none;
+    margin: 13px 0 0;
+    padding: 0;
+}
+
+.legend-panel li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #d6e0e5;
+    font-size: 11px;
+    padding: 6px 0;
+}
+
+.legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------
+   Harita üzerindeki ipucu notu
+   ------------------------------------------------------------------- */
+.map-note {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 9px 13px;
+    font-size: 10px;
+    color: #c5d0d6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pulse {
+    width: 7px;
+    height: 7px;
+    background: #2f9cff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(47, 156, 255, 0.13);
+    flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------
+   Leaflet bileşenlerinin tema uyumu
+   ------------------------------------------------------------------- */
+.leaflet-control-zoom {
+    margin-top: 92px !important;
+    margin-right: 23px !important;
+    border: none !important;
+    box-shadow: var(--shadow) !important;
+}
+
+.leaflet-control-zoom a {
+    background: rgba(9, 23, 30, 0.86) !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.leaflet-control-attribution {
+    background: rgba(0, 0, 0, 0.48) !important;
+    color: #c9d2d8 !important;
+    font-size: 8px !important;
+}
+
+.leaflet-control-attribution a {
+    color: #9acbff !important;
+}
+
+.custom-marker {
+    background: none;
+    border: 0;
+}
+
+.marker-pin {
+    width: 28px;
+    height: 28px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 2px solid #fff;
+    box-shadow: 0 5px 13px rgba(0, 0, 0, 0.4);
+    display: grid;
+    place-items: center;
+}
+
+.marker-pin span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: rgba(8, 22, 29, 0.94);
+    color: #fff;
+}
+
+.leaflet-popup-content-wrapper {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    box-shadow: var(--shadow);
+}
+
+.popup-title {
+    font-weight: 800;
+    margin-bottom: 5px;
+}
+
+.popup-meta {
+    font-size: 10px;
+    color: #b7c4cb;
+    line-height: 1.5;
+}
+
+/* -------------------------------------------------------------------
+   Modal (proje ekle / düzenle)
+   ------------------------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 8, 12, 0.5);
+    display: grid;
+    place-items: center;
+}
+
+.modal {
+    width: min(530px, calc(100% - 28px));
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(10, 24, 31, 0.94);
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.modal h2 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.close {
+    background: none;
+    color: #aab9c2;
+    font-size: 24px;
+}
+
+.modal form > label, .form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 11px;
+    font-size: 10px;
+    color: #9fb0ba;
+    font-weight: 700;
+}
+
+.modal input, .modal select, .modal textarea {
+    width: 100%;
+}
+
+.modal textarea {
+    resize: vertical;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.modal-footer {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 8px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    margin-top: 4px;
+}
+
+/* -------------------------------------------------------------------
+   Bildirim (toast)
+   ------------------------------------------------------------------- */
+.toast {
+    position: fixed;
+    z-index: 3000;
+    right: 24px;
+    bottom: 24px;
+    padding: 11px 15px;
+    border-radius: 10px;
+    background: #0b1b24;
+    color: #fff;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    font-size: 11px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* -------------------------------------------------------------------
+   Yazdırma görünümü (Raporlar sekmesindeki "Yazdır" butonu için)
+   ------------------------------------------------------------------- */
+@media print {
+    .topbar, .legend-panel, .map-note, #harita, .map-shade, .report-actions {
+        display: none !important;
+    }
+    body {
+        overflow: visible;
+        background: #fff;
+        color: #111;
+    }
+    .overlay-ui {
+        position: static;
+        inset: auto;
+    }
+    .left-stack {
+        width: 100% !important;
+    }
+    .reports-panel {
+        background: #fff !important;
+        color: #111 !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+    .report-row, .eyebrow, .report-group__title {
+        color: #111 !important;
+    }
+}
+
+/* -------------------------------------------------------------------
+   Duyarlı tasarım
+   ------------------------------------------------------------------- */
+@media (max-width: 850px) {
+    nav {
+        display: none;
+    }
+    .left-stack, body[data-tab="projects"] .left-stack,
+    body[data-tab="analysis"] .left-stack, body[data-tab="reports"] .left-stack {
+        width: 360px;
+    }
+    .legend-panel {
+        display: none;
+    }
+    .stats {
+        grid-template-columns: 1fr 1fr;
+    }
+    .welcome {
+        padding: 15px;
+    }
+    .topbar {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+    }
+    .overlay-ui {
+        inset: 84px 10px 10px;
+    }
+}
+
+@media (max-width: 520px) {
+    .brand strong {
+        font-size: 12px;
+    }
+    .top-actions .icon-btn {
+        display: none;
+    }
+    .left-stack, body[data-tab="projects"] .left-stack,
+    body[data-tab="analysis"] .left-stack, body[data-tab="reports"] .left-stack {
+        width: 100%;
+    }
+    .welcome {
+        display: none;
+    }
+    .projects-panel {
+        max-height: 55vh;
+    }
+    .overlay-ui {
+        bottom: auto;
+    }
+    .map-note {
+        display: none;
+    }
+    .btn {
+        padding: 0 9px;
+    }
+    .topbar {
+        gap: 8px;
+    }
+    .table-head, .table-row {
+        grid-template-columns: 2fr 1fr 1fr;
+    }
+    .table-head span:nth-child(4), .table-row .district-text {
+        display: none;
+    }
+}
+
+/* Reference-inspired map workspace */
+:root { --glass: rgba(22,38,43,.76); --line: rgba(215,239,245,.22); --muted: #bdcdd3; --radius: 13px; --blue:#238dff; }
+.glass { backdrop-filter: blur(20px) saturate(135%); -webkit-backdrop-filter: blur(20px) saturate(135%); box-shadow: 0 12px 38px #00101940, inset 0 1px 0 #ffffff09; }
+.topbar { inset:0 0 auto; height:70px; border-radius:0; border-width:0 0 1px; padding:0 24px; gap:30px; background:rgba(15,30,37,.34); backdrop-filter:blur(10px) saturate(130%); -webkit-backdrop-filter:blur(10px) saturate(130%); }
+.brand__mark { background:linear-gradient(140deg,#25cbff,#1768fa); border-radius:12px 12px 12px 3px; box-shadow:0 0 25px #168cff40; width:35px;height:35px; }
+.brand-copy { display:flex; flex-direction:column; gap:5px; }
+.brand-copy strong { font-size:14px; letter-spacing:-.3px; }
+.brand-copy small { color:#a9bdc8; font-size:9px; letter-spacing:.8px; }
+nav { height:100%; align-items:stretch; margin-left:10px; gap:27px; }
+nav a { display:flex; align-items:center; padding:0 2px; font-size:12px; }
+nav a.active::after { bottom:13px; height:3px; border-radius:4px; box-shadow:0 0 14px #218aff80; }
+.primary { background:linear-gradient(135deg,#18a1ff,#2473ff); box-shadow:0 4px 16px #1479ff35; }
+.btn:hover,.icon-btn:hover,.lang-btn:hover { filter:brightness(1.16); }
+button:focus-visible,a:focus-visible,[role=button]:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid #67cfff; outline-offset:3px; }
+.overlay-ui { inset:88px 20px 25px; }
+.left-stack { width:365px; gap:14px; }
+.tab-panel { gap:12px; flex:1; height:auto; }
+.welcome { padding:18px; background:linear-gradient(125deg,#243c43d9,#182c34bf); }
+.eyebrow { color:#9fb9c8; font-size:8px; letter-spacing:1.8px; }
+.welcome h1 { font-size:21px; letter-spacing:-.6px; }
+.welcome > p { font-size:11px; line-height:1.7; margin:8px 0 14px; max-width:285px; }
+.stats { gap:7px; grid-template-columns:repeat(4,1fr); }
+.stats div { padding:10px 8px; border-radius:10px; background:linear-gradient(150deg,#ffffff12,#ffffff05); }
+.stat-icon { display:grid; place-items:center; width:26px;height:26px;border-radius:50%;font-style:normal;font-size:17px;margin-bottom:9px;background:#198fff;box-shadow:0 3px 14px #168aff40; }
+.stats div:nth-child(2) .stat-icon { background:#10b981; box-shadow:0 3px 14px #10b98140; }
+.stats div:nth-child(3) .stat-icon { background:#ffb324; box-shadow:0 3px 14px #ffb32440; }
+.stats div:nth-child(4) .stat-icon { background:#9a6bff; box-shadow:0 3px 14px #9a6bff40; }
+.stats b { font-size:21px; font-weight:600; }
+.stats span { font-size:8px; color:#c5d3d8; }
+.projects-panel { padding:15px; }
+.panel-head h2 {font-size:16px;}
+.search {height:35px;margin:12px 0 8px;background:#06151b35;}
+.filters select {padding:7px;font-size:10px;min-width:0;}
+.project-list {flex:1;}
+.project-item {padding:13px 7px;border-radius:8px;border-bottom-color:#ffffff0c;transition:background .18s;}
+.project-item:hover,.project-item.selected { background:#208cff18; }
+.project-item.selected {box-shadow:inset 3px 0 #32adff;}
+.project-name {font-size:10px;line-height:1.5;}
+.project-top {gap:9px;}
+.list-pin {display:grid;place-items:center;flex-shrink:0;width:27px;height:31px;border-radius:50% 50% 50% 5px;background:var(--pin);color:white;font-size:18px;box-shadow:0 3px 12px color-mix(in srgb,var(--pin) 35%,transparent);}
+.project-meta {margin:3px 0 0 36px;font-size:9px;color:#b0c2cb;}
+.status {font-size:8px;padding:4px 6px;border-radius:5px;}
+.status--planlama {background:#ffc347;color:#30200b;}
+.status--devam_ediyor {background:#10b98135;color:#8affcd;border:1px solid #35e6ad30;}
+.status--tamamlandi {background:#247fff40;color:#a9d8ff;border:1px solid #428fff40;}
+.text-link {border:0;background:none;color:#51bcff;font:inherit;font-size:11px;cursor:pointer;text-align:left;padding:13px 0 0;}
+.field-card {pointer-events:auto;border-radius:12px;padding:16px;display:flex;align-items:center;gap:13px;flex-shrink:0;}
+.field-icon {color:#43baff;font-size:30px;}
+.field-card strong {display:block;font-size:12px;margin-bottom:6px;}
+.field-card #map-coordinates {font-size:10px;color:#b6cad4;font-variant-numeric:tabular-nums;}
+.field-badge {font-size:7px;letter-spacing:1px;color:#76e6c1;background:#1dd9a416;border:1px solid #35e9b332;border-radius:5px;padding:6px;margin-left:auto;}
+.legend-panel {width:177px;padding:15px;}
+.legend-panel li {font-size:10px;padding:8px 0;}
+.legend-dot {width:10px;height:10px;box-shadow:0 0 12px #ffffff10;}
+.legend-toggle {border:0;background:none;color:#c4d7df;cursor:pointer;}
+.basemaps {position:absolute;right:0;bottom:10px;display:flex;gap:8px;border-radius:12px;padding:10px;pointer-events:auto;}
+.basemaps button {padding:0;border:0;background:none;color:#d4e2e8;font-size:9px;cursor:pointer;display:grid;gap:6px;justify-items:center;}
+.map-thumb {width:52px;height:38px;border-radius:6px;border:2px solid transparent;display:block;opacity:.65;}
+.active .map-thumb {border-color:#33b1ff;opacity:1;box-shadow:0 0 10px #219aff35;}
+.satellite {background:repeating-linear-gradient(35deg,transparent 0 10px,#a3aa813d 11px 13px),linear-gradient(115deg,#52634b 30%,#153f56 31% 58%,#677359 59%);}
+.street {background:repeating-linear-gradient(90deg,transparent 0 12px,#fff 13px 15px),repeating-linear-gradient(15deg,#d6dece 0 11px,#fafffa 12px 14px);}
+.terrain {background:repeating-radial-gradient(ellipse at 75% 80%,#8b986e 0 3px,#bac496 4px 7px,#d3d6ac 8px 11px);}
+.map-note {left:390px;bottom:15px;transform:none;max-width:300px;font-size:9px;line-height:1.6;background:#132b34d9;}
+.leaflet-bottom.leaflet-right {bottom:125px;}
+.leaflet-control-zoom {margin:0 20px 12px 0!important;}
+.leaflet-control-zoom a {width:34px!important;height:34px!important;line-height:34px!important;}
+.leaflet-control-scale {margin-right:20px!important;}
+.leaflet-control-attribution {position:fixed;bottom:0;right:0;max-width:100%;}
+.marker-pin {width:34px;height:34px;border:2px solid #ffffffef;box-shadow:0 4px 20px #0008;}
+.marker-pin span {transform:rotate(45deg);width:auto;height:auto;background:none;font-size:21px;color:#fff;}
+.leaflet-popup-content {margin:15px 17px;min-width:170px;}
+.popup-title {font-size:12px;line-height:1.5;}
+.popup-meta {line-height:1.8;}
+.modal {max-height:calc(100dvh - 30px);overflow:auto;}
+@media(min-width:651px) and (max-height:740px) { .welcome {padding:13px;} .welcome>.eyebrow {display:none;} .welcome>p {margin:6px 0 10px;} .stats div {padding:7px;} .stat-icon {width:22px;height:22px;margin-bottom:5px;} .field-card {padding:10px 15px;} .project-item {padding:9px 6px;} }
+@media(max-width:1000px) { .topbar {gap:14px;padding:0 16px;} nav {gap:16px;margin:0;} .brand-copy strong {font-size:12px;} .map-note {display:none;} }
+@media(min-width:651px) and (max-width:850px) { nav {display:flex;} .brand-copy {display:flex;} .brand-copy small {display:none;} .left-stack {width:340px;} .legend-panel {display:block;width:150px;} }
+@media(max-width:650px) { .topbar {height:104px;flex-wrap:wrap;align-content:start;padding:12px;gap:10px;} .brand-copy strong {font-size:11px;} .brand-copy small {font-size:8px;} .top-actions {gap:5px;} .top-actions .icon-btn {display:block;} .top-actions .btn {height:34px;font-size:10px;padding:0 8px;} .brand__mark {width:27px;height:30px;} nav {display:flex;order:3;width:100%;height:38px;justify-content:space-around;gap:0;} nav a {font-size:11px;} nav a.active::after {bottom:0;} .overlay-ui {inset:116px 10px 24px;} .left-stack,body[data-tab] .left-stack {position:absolute;bottom:0;width:100%;height:44dvh;} .welcome,.field-card,.legend-panel,.map-note {display:none;} .projects-panel {max-height:none;padding:12px;} .panel-head .eyebrow {display:none;} .panel-head h2 {font-size:14px;} .search {margin:8px 0 6px;height:31px;} .filters {margin-bottom:3px;} .project-item {padding:8px 5px;} .text-link {padding-top:8px;} .basemaps {top:0;bottom:auto;right:0;padding:7px;gap:6px;} .map-thumb {width:38px;height:27px;} .leaflet-bottom.leaflet-right {bottom:calc(44dvh + 50px);} .leaflet-control-zoom {margin-right:10px!important;} .analysis-panel,.reports-panel {padding:14px;} }
+@media(prefers-reduced-motion:reduce) { * {scroll-behavior:auto!important;transition:none!important;} }
+@media print { .field-card,.basemaps {display:none!important;} .left-stack {position:static!important;height:auto!important;} .report-row__count,.reports-intro {color:#111;} }
