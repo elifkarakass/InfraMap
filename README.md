@@ -1,4 +1,6 @@
 # InfraMap — Infrastructure Project Tracking Map
+<img width="1917" height="1011" alt="image" src="https://github.com/user-attachments/assets/3ebc94ff-8d16-44d9-86e9-65ef90db0127" />
+
 
 A web application for tracking road, drinking water, sewerage, wastewater, and GIS/photogrammetry projects on a full-screen satellite map. It features a glassmorphism interface, a Flask + SQLite backend, and a Leaflet.js map, with English and Turkish language support.
 
