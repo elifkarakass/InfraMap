@@ -1,103 +1,119 @@
-#  InfraMap — Altyapı Proje Takip Haritası
+# InfraMap — Infrastructure Project Tracking Map
 
-Yol, içme suyu, kanalizasyon, atıksu ve CBS/fotogrametri projelerini tam ekran bir
-uydu haritası üzerinde takip etmeye yarayan, cam efektli (glassmorphism) arayüze
-sahip bir web uygulaması. Flask + SQLite backend'i ve Leaflet.js tabanlı bir harita
-kullanır; İngilizce/Türkçe dil desteği içerir.
+A web application for tracking road, drinking water, sewerage, wastewater, and GIS/photogrammetry projects on a full-screen satellite map. It features a glassmorphism interface, a Flask + SQLite backend, and a Leaflet.js map, with English and Turkish language support.
 
-## Neden bu proje?
+## Why This Project?
 
-Daha önce Python, SQL, Flask/FastAPI ve Chart.js ile veri analitiği ağırlıklı projeler
-geliştirmiştim (fintech funnel analizi, kripto para dashboard'u, hava durumu paneli).
-Bu projede aynı yaklaşımı haritalama/CBS tarafına taşıyarak, mühendislik firmalarının
-altyapı projelerini konumsal olarak yönetmesine yardımcı olacak bir araç kurguladım.
+I previously developed data analytics projects using Python, SQL, Flask/FastAPI, and Chart.js, including fintech funnel analysis, a cryptocurrency dashboard, and a weather dashboard.
 
-## Özellikler
+With InfraMap, I applied the same approach to mapping and GIS, designing a tool to help engineering companies manage infrastructure projects geographically.
 
--  **Tam ekran uydu haritası** (Leaflet.js + Esri World Imagery) — projeler tip
-  bazlı renkli pin'ler olarak gösterilir; renk kodu gerçek yeraltı altyapı işaretleme
-  standardından (APWA) esinlenilmiştir
--  **4 sekmeli, işlevsel üst menü**
-  - **Ana Sayfa** — özet istatistikler + filtrelenebilir proje listesi
-  - **Projeler** — tüm projelerin tablo görünümü (ad, tip, durum, ilçe)
-  - **Analiz** — Chart.js ile tipe ve duruma göre proje dağılım grafikleri
-  - **Raporlar** — tip/durum bazlı özet, CSV dışa aktarma ve yazdırma
--  **Haritaya tıklayarak proje ekleme** — koordinatlar otomatik doldurulur
--  **Düzenleme / silme** — bir projeye tıklayıp bilgilerini güncelleyebilir veya
-  silebilirsin
--  **Filtreleme ve arama** — tipe, duruma veya metne göre projeleri filtrele
--  **EN/TR dil desteği** — sağ üstteki düğmeyle anında dil değişimi
--  **CSV dışa aktarma ve yazdırma** — Raporlar sekmesinden tüm proje listesini
-  indirebilir veya yazdırılabilir bir görünüm açabilirsin
--  **REST API** — tüm işlemler `/api/projeler` ve `/api/istatistikler`
-  endpoint'leri üzerinden JSON olarak yapılır, frontend'den bağımsız olarak da
-  kullanılabilir
+## Features
 
-## Kullanılan teknolojiler
+- **Full-screen interactive map** — satellite, street, and terrain views, with colored markers for different project types.
+- **Four main tabs:**
+  - **Home** — summary statistics and a filterable project list.
+  - **Projects** — a table of projects showing their name, type, status, and district.
+  - **Analysis** — Chart.js visualizations of project distribution by type and status.
+  - **Reports** — summaries by type and status, CSV export, and printing.
+- **Add projects by clicking the map** — coordinates are filled in automatically.
+- **Edit and delete projects** — open a project's details to update or delete it.
+- **Filtering and search** — filter projects by type, status, or search text.
+- **English/Turkish interface** — switch languages using the button in the top-right corner.
+- **CSV export and printing** — export all project records or print a summary from the Reports tab.
+- **REST API** — project data and statistics are available as JSON through `/api/projeler` and `/api/istatistikler`, independently of the frontend.
 
-| Katman     | Teknoloji                              |
-|------------|------------------------------------------|
-| Backend    | Python, Flask                             |
-| Veritabanı | SQLite (ham `sqlite3`, ORM yok)           |
-| Frontend   | HTML, CSS (glassmorphism), Vanilla JavaScript |
-| Harita     | Leaflet.js + Esri World Imagery (uydu)    |
-| Grafik     | Chart.js                                  |
-| i18n       | Basit anahtar/değer sözlüğüyle EN/TR çeviri |
+## Tech Stack
 
-## Kurulum ve çalıştırma
+| Layer | Technology |
+| --- | --- |
+| Backend | Python, Flask |
+| Database | SQLite using Python's built-in `sqlite3` module, without an ORM |
+| Frontend | HTML, CSS with glassmorphism styling, Vanilla JavaScript |
+| Maps | Leaflet.js, Esri map layers, OpenStreetMap |
+| Charts | Chart.js |
+| Internationalization | English/Turkish translations using a key-value dictionary |
+
+## Installation and Setup
+
+Clone the repository:
 
 ```bash
-git clone https://github.com/<kullanici-adin>/altyapi-proje-haritasi.git
-cd altyapi-proje-haritasi
+git clone https://github.com/elifkarakass/InfraMap.git
+cd InfraMap
+```
 
+Create a virtual environment:
+
+```bash
 python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+```
 
+Activate it on **Windows PowerShell**:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+Or on **macOS/Linux**:
+
+```bash
+source venv/bin/activate
+```
+
+Install dependencies and start the application:
+
+```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-Sonra tarayıcıdan `http://127.0.0.1:5000` adresine git. İlk çalıştırmada veritabanı
-otomatik oluşturulur ve birkaç örnek proje eklenir.
+Open `http://127.0.0.1:5000` in your browser.
 
-## Proje yapısı
+On the first run, the application automatically creates the database and adds sample projects. An internet connection is required to load external map tiles and CDN-hosted libraries.
 
-```
-altyapi-proje-haritasi/
-├── app.py                 # Flask backend: route'lar, SQLite sorguları, API
+## Project Structure
+
+```text
+InfraMap/
+├── app.py                 # Flask routes, SQLite queries, and REST API
 ├── requirements.txt
 ├── templates/
-│   └── index.html         # Tek sayfalık arayüz (4 sekme, modal, i18n)
+│   └── index.html         # Single-page interface, tabs, and project form
 └── static/
-    ├── css/style.css       # Glassmorphism tema, sekme/tablo/grafik/rapor stilleri
-    └── js/app.js           # Harita, sekme geçişi, API, grafik, CSV/yazdırma mantığı
+    ├── css/
+    │   └── style.css      # Glassmorphism theme and responsive layouts
+    └── js/
+        └── app.js         # Map, tabs, API calls, charts, translations, and export
 ```
 
-## API özeti
+## API Overview
 
-| Metod  | Endpoint                  | Açıklama                              |
-|--------|----------------------------|----------------------------------------|
-| GET    | `/api/projeler`            | Projeleri listeler (`tip`, `durum`, `q` filtreleriyle) |
-| GET    | `/api/projeler/<id>`       | Tek bir projeyi getirir                |
-| POST   | `/api/projeler`            | Yeni proje ekler                       |
-| PUT    | `/api/projeler/<id>`       | Projeyi günceller                      |
-| DELETE | `/api/projeler/<id>`       | Projeyi siler                          |
-| GET    | `/api/istatistikler`       | Tip/duruma göre proje sayıları (SQL `GROUP BY`) |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/projeler` | List projects with optional `tip`, `durum`, and `q` filters |
+| GET | `/api/projeler/<id>` | Retrieve a single project |
+| POST | `/api/projeler` | Create a project |
+| PUT | `/api/projeler/<id>` | Update a project |
+| DELETE | `/api/projeler/<id>` | Delete a project |
+| GET | `/api/istatistikler` | Retrieve project counts grouped by type and status using SQL `GROUP BY` |
 
-## Geliştirme sürecinde yapay zekâ kullanımı
+## AI-Assisted Development
 
-Bu projeyi geliştirirken Claude'u kod yazımı, hata ayıklama ve yapı planlaması
-sürecinde aktif olarak kullandım — Flask route yapısı, SQLite sorguları, Leaflet
-entegrasyonu ve sekme tabanlı frontend mimarisi konusunda. Üretilen kodu çalıştırıp
-test ederek (CRUD işlemleri, filtreler, sekme geçişleri, CSV/yazdırma, hata
-durumları) doğruluğunu kendim doğruladım.
+I used Claude for coding assistance, debugging, and application planning, including Flask routes, SQLite queries, Leaflet integration, and the tab-based frontend structure.
 
-## Yol haritası (geliştirilebilir fikirler)
+I also used OpenAI Codex to refine the interface, improve the English/Turkish language support, and check core functionality. Automated checks covered project creation, retrieval, updates, deletion, filtering, and selected validation cases.
 
-- [ ] Poligon/çizgi (yol güzergahı) desteği, sadece nokta değil
-- [ ] Kullanıcı girişi ve yetkilendirme
-- [ ] React + TypeScript ile frontend'i yeniden yazma
+## Project Status
 
-## Lisans
+InfraMap is a personal portfolio and learning project intended for local use and demonstrations. Authentication, user permissions, and production deployment are planned improvements.
 
-Bu proje kişisel bir portföy/öğrenme projesidir, MIT lisansı ile paylaşılmıştır.
+## Roadmap
+
+- [ ] Support polygons and lines, such as road routes, alongside point markers.
+- [ ] Add user authentication and authorization.
+- [ ] Rebuild the frontend with React and TypeScript.
+
+## License
+
+Licensing has not yet been configured. An MIT license can be added by including a `LICENSE` file in the repository.
